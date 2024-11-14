@@ -11,11 +11,12 @@ A simple WebSocket-based chat application built with HTML, CSS, and JavaScript f
 
 ## Getting Started
 
-1. Clone the repository to your local machine.
-2. Run the Go server by executing `go run main.go` in the terminal.
-3. Open multiple browser tabs and navigate to `index.html` file.
-4. Enter sender and receiver IDs, and connect to the chat.
-5. Send messages to other users and see them appear in real-time.
+1. Clone the repository to your local machine. `git clone https://github.com/marifsulaksono/go-chat-websocket.git`.
+2. Open project directory `cd go-chat-websocket`.
+3. Run the Go server by executing `go run main.go` in the terminal.
+4. Open multiple browser tabs and navigate to `index.html` file.
+5. Enter sender and receiver IDs, and connect to the chat.
+6. Send messages to other users and see them appear in real-time.
 
 ## Project Structure
 
