@@ -3,93 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebSocket Chat</title>
+    <title>WebSocket Chat by Muhammad Arif Sulaksono</title>
 </head>
 <body>
     <h2>WebSocket Chat</h2>
-    <label for="user_id">User ID: </label>
-    <input type="text" id="user_id" placeholder="Enter your user ID" required>
+    <label for="sender_id">Sender ID: </label>
+    <input type="text" id="sender_id" placeholder="Sender ID" required>
+    <label for="receiver_id">Receiver ID: </label>
+    <input type="text" id="receiver_id" placeholder="Receiver ID" required>
     <button onclick="connectWebSocket()">Connect</button>
     <button onclick="disconnectWebSocket()" id="disconnect-btn" style="display:none;">Disconnect</button>
     <br><br>
 
-    <div id="chat-box" style="border: 1px solid #ddd; padding: 10px; width: 300px; height: 300px; overflow-y: scroll;">
+    <textarea id="message" rows="5" cols="50" style="resize: none;" placeholder="Type your message"></textarea>
+    <br><br>
+    <button onclick="sendMessage()">Send Message</button>
+    <button onclick="clearMessages()">Clear Message</button>
+    <br><br>
+
+    <div id="chat-box" style="border: 1px solid #ddd; padding: 10px; width: 400px; height: 400px; overflow-y: scroll;">
         <p><em>Chat messages will appear here...</em></p>
     </div>
 
-    <input type="text" id="receiver_id" placeholder="Receiver ID">
-    <input type="text" id="message" placeholder="Type your message">
-    <button onclick="sendMessage()">Send Message</button>
-    <br><br>
-    <button onclick="clearMessages()">Clear Messages</button>
+    <button onclick="clearChats()">Clear Chats</button>
 
     <script>
         let socket;
-
+    
+        /*
+        * Connect to the WebSocket server and join the chat
+        */
         function connectWebSocket() {
-            const userId = document.getElementById('user_id').value;
-            if (!userId) {
-                alert("Please enter a User ID!");
+            const senderId = document.getElementById('sender_id').value;
+            const receiverId = document.getElementById('receiver_id').value;
+    
+            if (!receiverId || !senderId) {
+                alert("provide Sender ID and Receiver ID!");
                 return;
             }
+    
+            socket = new WebSocket(`ws://localhost:8080/ws/chat?user_id=${senderId}&recipient_id=${receiverId}`);
+    
+            /*
+            * onopen - triggered when the WebSocket connection is established
+            * onmessage - triggered when a message is received from the server
+            * onclose - triggered when the WebSocket connection is closed
+            * onerror - triggered when there is an error with the WebSocket connection
+            */
 
-            // Open WebSocket connection
-            socket = new WebSocket(`ws://localhost:8080/ws/chat?user_id=${userId}`);
-
-            // Handle opened connection
             socket.onopen = function() {
-                appendMessage(`Connected as User ${userId}`);
-                document.getElementById('disconnect-btn').style.display = 'inline';  // Show Disconnect button
+                appendMessage(`Connected as User ${senderId}`);
+                document.getElementById('disconnect-btn').style.display = 'inline';
             };
-
-            // Listen for messages
+    
             socket.onmessage = function(event) {
                 const messageData = JSON.parse(event.data);
-
-                // Format the time, if available
-                const time = messageData.time ? new Date(messageData.time).toLocaleString() : "unknown time";
-
-                // Check if the message is for the current user
-                if (messageData.receiver === userId) {
-                    appendMessage(`[${time}] ${messageData.sender} to You: ${messageData.content}`);
+    
+                if (Array.isArray(messageData)) {
+                    messageData.forEach(msg => appendFormattedMessage(msg, senderId));
                 } else {
-                    appendMessage(`[${time}] You to ${messageData.receiver}: ${messageData.content}`);
+                    appendFormattedMessage(messageData, senderId);
                 }
             };
-
-            // Handle closed connection
+    
             socket.onclose = function(event) {
                 appendMessage(`Disconnected (Code: ${event.code}, Reason: ${event.reason})`);
-                document.getElementById('disconnect-btn').style.display = 'none';  // Hide Disconnect button
+                document.getElementById('disconnect-btn').style.display = 'none';
             };
-
-            // Error handling
+    
             socket.onerror = function(error) {
                 console.error("WebSocket Error:", error);
             };
         }
-
+    
+        /*
+        * Send a message to the WebSocket server
+        */
         function sendMessage() {
+            const senderId = document.getElementById('sender_id').value;
             const receiverId = document.getElementById('receiver_id').value;
             const messageContent = document.getElementById('message').value;
-
-            if (!receiverId || !messageContent) {
+    
+            if (!receiverId || !messageContent || !senderId) {
                 alert("Please enter both receiver ID and message content.");
                 return;
             }
-
+    
             const message = {
-                sender: document.getElementById('user_id').value,
+                sender: senderId,
                 receiver: receiverId,
-                content: messageContent
+                content: messageContent,
+                time: new Date().toISOString()
             };
-
-            // Send the message
+    
             socket.send(JSON.stringify(message));
             appendMessage(`[${new Date().toLocaleString()}] You to ${receiverId}: ${messageContent}`);
             document.getElementById('message').value = '';
         }
-
+    
+        /*
+        * Append a formatted message to the chat box
+        * Triggered by receiving a message from the server
+        */
+        function appendFormattedMessage(messageData, senderId) {
+            const time = messageData.time ? new Date(messageData.time).toLocaleString() : "unknown time";
+    
+            if (messageData.receiver === senderId) {
+                appendMessage(`[${time}] ${messageData.sender} to You: ${messageData.content}`);
+            } else {
+                appendMessage(`[${time}] You to ${messageData.receiver}: ${messageData.content}`);
+            }
+        }
+    
+        /*
+        * Append a message to the chat box
+        * Trgitted by appendFormattedMessage after receiving a message
+        */
         function appendMessage(message) {
             const chatBox = document.getElementById('chat-box');
             const newMessage = document.createElement('p');
@@ -97,14 +126,21 @@
             chatBox.appendChild(newMessage);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
-
-        function clearMessages() {
+    
+        function clearChats() {
             const chatBox = document.getElementById('chat-box');
             chatBox.innerHTML = '';
-            
-            appendMessage("<Chat history cleared...");
+            appendMessage("Chat history cleared...");
         }
-
+    
+        function clearMessages() {
+            const messageArea = document.getElementById('message');
+            messageArea.value = '';
+        }
+    
+        /*
+        * Disconnect from the WebSocket server
+        */
         function disconnectWebSocket() {
             if (socket) {
                 socket.close();
